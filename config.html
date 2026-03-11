@@ -182,12 +182,13 @@
       const checksumPos = 13 + EEPROM_SIZE;
       const noChecksum = data[checksumPos]===0x00 && data[checksumPos+1]===0x7F &&
                          data[checksumPos+2]===0x00 && data[checksumPos+3]===0x7F;
-      if (!noChecksum) {
+      let checksumWarning = null;
+      if (noChecksum) {
+        checksumWarning = 'File has no checksum (NO_CHECKSUM magic present).';
+      } else {
         const expected = toMidiCRC(crc32(data.subarray(0, checksumPos)));
-        for (let i = 0; i < 4; i++) {
-          if (data[checksumPos + i] !== expected[i])
-            throw new Error('Checksum mismatch');
-        }
+        const mismatch = expected.some((b, i) => data[checksumPos + i] !== b);
+        if (mismatch) checksumWarning = 'Checksum mismatch — file may be corrupt.';
       }
 
       // Extract all values
@@ -196,7 +197,7 @@
       for (let addr = 0; addr < payloadSize; addr += 2)
         values[addr] = fromMidiU16(data[payloadBase + addr], data[payloadBase + addr + 1]);
 
-      return { version: values[0] ?? 0, values };
+      return { version: values[0] ?? 0, values, checksumWarning };
     }
 
     // Wrap 205-byte sysex payload in a minimal type-0 MIDI file.
@@ -473,7 +474,7 @@
               loadWarnings.value = [];
               const bytes = new Uint8Array(e.target.result);
               const sysexData = findSysexInMidi(bytes);
-              const { version: fileVersion, values } = parseSysexData(sysexData);
+              const { version: fileVersion, values, checksumWarning } = parseSysexData(sysexData);
 
               configName.value    = file.name.replace(/\.(mid|syx)$/i, '');
               configComment.value = '';
@@ -481,10 +482,11 @@
               const extraNames = applySysexValues(values, fileVersion);
               timeCreated.value = new Date().toISOString();
 
+              const warnings = [];
+              if (checksumWarning) warnings.push(checksumWarning);
               if (extraNames.length)
-                loadWarnings.value = [
-                  `${extraNames.length} item(s) from a newer config version are loaded but hidden: ${extraNames.join(', ')}`
-                ];
+                warnings.push(`${extraNames.length} item(s) from a newer config version are loaded but hidden: ${extraNames.join(', ')}`);
+              loadWarnings.value = warnings;
             } catch (err) {
               loadError.value = `Failed to load MIDI file: ${err.message}`;
             }
