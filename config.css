@@ -171,7 +171,7 @@ h1 {
 }
 
 .item-label {
-  font-size: 13px;
+  font-size: 20px;
   color: #ccc;
   white-space: nowrap;
   overflow: hidden;
@@ -180,7 +180,7 @@ h1 {
 
 .item-id {
   font-family: monospace;
-  font-size: 11px;
+  font-size: 17px;
   color: #555;
   white-space: nowrap;
 }
@@ -193,7 +193,7 @@ h1 {
 }
 
 .item-range {
-  font-size: 11px;
+  font-size: 17px;
   color: #555;
   white-space: nowrap;
 }
@@ -203,9 +203,9 @@ h1 {
   border: 1px solid #444;
   border-radius: 4px;
   color: #e0e0e0;
-  font-size: 13px;
+  font-size: 20px;
   padding: 4px 8px;
-  width: 90px;
+  width: 110px;
   text-align: right;
   outline: none;
   transition: border-color 0.15s;
@@ -219,7 +219,7 @@ h1 {
 }
 
 .item-error {
-  font-size: 11px;
+  font-size: 17px;
   color: #ff6060;
   white-space: nowrap;
 }
@@ -252,4 +252,83 @@ h1 {
 .item-stepper button:hover {
   background: #3a3a3a;
   color: #ccc;
+}
+
+.item select {
+  appearance: none;
+  -webkit-appearance: none;
+  background: #1a1a1a url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='6'%3E%3Cpath d='M0 0l5 6 5-6z' fill='%23666'/%3E%3C/svg%3E") no-repeat right 10px center;
+  border: 1px solid #444;
+  border-radius: 4px;
+  color: #e0e0e0;
+  cursor: pointer;
+  font-family: inherit;
+  font-size: 20px;
+  outline: none;
+  padding: 4px 30px 4px 8px;
+  transition: border-color 0.15s;
+}
+
+.item select:focus { border-color: #666; }
+
+.item-bitfield {
+  display: flex;
+  flex-direction: row;
+  gap: 12px;
+  padding: 8px 0 2px;
+}
+
+.item-bitfield-spacer {
+  flex: 1;
+}
+
+.item-bitfield-checks {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.bitfield-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  font-size: 20px;
+  color: #ccc;
+  cursor: pointer;
+  user-select: none;
+}
+
+.bitfield-row input[type="checkbox"] {
+  appearance: none;
+  -webkit-appearance: none;
+  width: 18px;
+  height: 18px;
+  flex-shrink: 0;
+  background: #1a1a1a;
+  border: 1px solid #444;
+  border-radius: 3px;
+  cursor: pointer;
+  outline: none;
+  position: relative;
+  transition: border-color 0.15s;
+}
+
+.bitfield-row input[type="checkbox"]:focus { border-color: #666; }
+
+.bitfield-row input[type="checkbox"]:checked {
+  background: #333;
+  border-color: #666;
+}
+
+.bitfield-row input[type="checkbox"]:checked::after {
+  content: '';
+  position: absolute;
+  left: 4px;
+  top: 1px;
+  width: 6px;
+  height: 10px;
+  border: 2px solid #e0e0e0;
+  border-top: none;
+  border-left: none;
+  transform: rotate(45deg);
 }

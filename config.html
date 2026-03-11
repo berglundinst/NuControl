@@ -50,7 +50,7 @@
                 <span class="item-label">{{ item.friendlyName || id }}</span>
                 <span class="item-id" v-if="item.friendlyName">{{ id }}</span>
               </div>
-              <div class="item-right">
+              <div class="item-right" v-if="!bitfieldBits(item)">
                 <template v-if="selectOptions(item)">
                   <select
                     :value="item._raw"
@@ -78,6 +78,23 @@
                   </div>
                   <span class="item-error" v-if="item._error">{{ item._error }}</span>
                 </template>
+              </div>
+            </div>
+            <div class="item-bitfield" v-if="bitfieldBits(item)">
+              <div class="item-bitfield-spacer"></div>
+              <div class="item-bitfield-checks">
+                <label
+                  v-for="bf in bitfieldBits(item)"
+                  :key="bf.bit"
+                  class="bitfield-row"
+                >
+                  <input
+                    type="checkbox"
+                    :checked="getBit(item, bf.bit)"
+                    @change="setBit(item, bf.bit, $event.target.checked)"
+                  >
+                  {{ bf.label }}
+                </label>
               </div>
             </div>
             <input
@@ -353,6 +370,29 @@
           });
         }
 
+        // Parse "bitfield:bit;label:bit;label:..." → [{bit, label}, ...]
+        function bitfieldBits(item) {
+          const m = (item.uiModel || '').match(/^bitfield:(.+)$/);
+          if (!m) return null;
+          return m[1].split(':').map(part => {
+            const semi = part.indexOf(';');
+            return semi === -1
+              ? { bit: parseInt(part), label: part }
+              : { bit: parseInt(part.slice(0, semi)), label: part.slice(semi + 1) };
+          });
+        }
+
+        function getBit(item, bit) {
+          const val = parseInt(item._raw, 10);
+          return !isNaN(val) && (val & (1 << bit)) !== 0;
+        }
+
+        function setBit(item, bit, checked) {
+          let val = parseInt(item._raw, 10);
+          if (isNaN(val)) val = 0;
+          item._raw = String(checked ? val | (1 << bit) : val & ~(1 << bit));
+        }
+
         function sliderValue(item) {
           const offset = getOffset(item);
           const n = parseInt(item._raw, 10);
@@ -563,6 +603,7 @@
         return { sections, loadError, loadWarnings, configName, configComment, timeCreated,
                  fileInput,
                  touch, validate, normalize, sliderValue, setSlider, itemRangeText, selectOptions,
+                 bitfieldBits, getBit, setBit,
                  itemVisible, sectionVisible, step,
                  triggerLoad, loadFile, saveConfig, saveMidi, saveSyx };
       }
