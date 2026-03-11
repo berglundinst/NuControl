@@ -17,8 +17,10 @@
         <input class="meta-name" type="text" v-model="configName" placeholder="Config name" @input="touch">
         <div class="meta-actions">
           <button @click="triggerLoad">Load</button>
-          <button @click="saveConfig">Save</button>
-          <input ref="fileInput" type="file" accept=".json" style="display:none" @change="loadConfig">
+          <button @click="saveConfig">Save JSON</button>
+          <button @click="saveMidi">Save MIDI</button>
+          <button @click="saveSyx">Save SysEx</button>
+          <input ref="fileInput" type="file" accept=".json,.mid,.syx" style="display:none" @change="loadFile">
         </div>
       </div>
       <textarea class="meta-comment" v-model="configComment" placeholder="Comment" rows="2" @input="touch"></textarea>
@@ -82,15 +84,183 @@
   <script>
     const { createApp, reactive, ref, computed } = Vue;
 
+    // ── Sysex / MIDI file constants ──────────────────────────────────────────
+    const SYSEX_VENDOR   = [0x00, 0x3E, 0x7F];
+    const SYSEX_HEADER   = 'NuEVIc01';
+    const EEPROM_SIZE    = 188;   // bytes; 94 uint16 values
+    const SYSEX_DATA_LEN = 3 + 8 + 2 + EEPROM_SIZE + 4; // = 205
+
+    // CRC32 (IEEE 802.3 / zlib polynomial, same as the device)
+    function crc32(data) {
+      let crc = 0xFFFFFFFF;
+      for (let i = 0; i < data.length; i++) {
+        crc ^= data[i];
+        for (let j = 0; j < 8; j++) {
+          crc = (crc >>> 1) ^ (0xEDB88320 & -(crc & 1));
+        }
+      }
+      return (~crc) >>> 0;
+    }
+
+    // Encode a 14-bit value as two 7-bit MIDI bytes [MSB, LSB]
+    function toMidiU16(val) {
+      return [(val >> 7) & 0x7F, val & 0x7F];
+    }
+
+    // Decode two 7-bit MIDI bytes back to a 14-bit value
+    function fromMidiU16(b0, b1) {
+      return ((b0 & 0x7F) << 7) | (b1 & 0x7F);
+    }
+
+    // Encode a crc32 uint32 as 4 MIDI-safe bytes (big-endian, MSB of each byte stripped)
+    function toMidiCRC(crc) {
+      return [(crc >>> 24) & 0x7F, (crc >>> 16) & 0x7F, (crc >>> 8) & 0x7F, crc & 0x7F];
+    }
+
+    // Build the 205-byte sysex payload from the current section data.
+    // hiddenPredicate(item) → true means the item is visible/active.
+    function buildSysexData(sections, isVisible, getOffset) {
+      const buf = new Uint8Array(SYSEX_DATA_LEN); // zero-initialised
+
+      // Vendor ID
+      buf[0] = 0x00; buf[1] = 0x3E; buf[2] = 0x7F;
+
+      // Header "NuEVIc01"
+      for (let i = 0; i < 8; i++) buf[3 + i] = SYSEX_HEADER.charCodeAt(i);
+
+      // Payload size field
+      const [ps0, ps1] = toMidiU16(EEPROM_SIZE);
+      buf[11] = ps0; buf[12] = ps1;
+
+      // Config values (payload starts at byte 13)
+      const payloadBase = 13;
+      for (const section of sections) {
+        for (const item of Object.values(section.items)) {
+          if (!isVisible(item)) continue;
+          const offset = getOffset(item);
+          const n = parseInt(item._raw, 10);
+          if (isNaN(n)) continue;
+          const stored = n + offset;
+          const [b0, b1] = toMidiU16(stored);
+          buf[payloadBase + item.address]     = b0;
+          buf[payloadBase + item.address + 1] = b1;
+        }
+      }
+
+      // CRC32 over everything before the checksum field
+      const checksumPos = payloadBase + EEPROM_SIZE; // 201
+      const crcBytes = toMidiCRC(crc32(buf.subarray(0, checksumPos)));
+      buf[checksumPos]     = crcBytes[0];
+      buf[checksumPos + 1] = crcBytes[1];
+      buf[checksumPos + 2] = crcBytes[2];
+      buf[checksumPos + 3] = crcBytes[3];
+
+      return buf;
+    }
+
+    // Parse a 205-byte sysex payload.
+    // Returns { version, values: { address: uint16 } } on success, or throws with a message.
+    function parseSysexData(data) {
+      if (data.length < SYSEX_DATA_LEN)
+        throw new Error(`Sysex too short (${data.length} bytes, expected ${SYSEX_DATA_LEN})`);
+
+      // Vendor ID
+      if (data[0] !== 0x00 || data[1] !== 0x3E || data[2] !== 0x7F)
+        throw new Error('Wrong vendor ID');
+
+      // Header
+      const hdr = String.fromCharCode(...data.subarray(3, 11));
+      if (hdr !== SYSEX_HEADER)
+        throw new Error(`Unrecognised sysex command: ${hdr}`);
+
+      // Payload size
+      const payloadSize = fromMidiU16(data[11], data[12]);
+      if (payloadSize !== EEPROM_SIZE)
+        throw new Error(`Wrong payload size: ${payloadSize} (expected ${EEPROM_SIZE})`);
+
+      // Checksum — NO_CHECKSUM magic = 0x7F007F00 little-endian → bytes [0x00, 0x7F, 0x00, 0x7F]
+      const checksumPos = 13 + EEPROM_SIZE;
+      const noChecksum = data[checksumPos]===0x00 && data[checksumPos+1]===0x7F &&
+                         data[checksumPos+2]===0x00 && data[checksumPos+3]===0x7F;
+      if (!noChecksum) {
+        const expected = toMidiCRC(crc32(data.subarray(0, checksumPos)));
+        for (let i = 0; i < 4; i++) {
+          if (data[checksumPos + i] !== expected[i])
+            throw new Error('Checksum mismatch');
+        }
+      }
+
+      // Extract all values
+      const payloadBase = 13;
+      const values = {};
+      for (let addr = 0; addr < payloadSize; addr += 2)
+        values[addr] = fromMidiU16(data[payloadBase + addr], data[payloadBase + addr + 1]);
+
+      return { version: values[0] ?? 0, values };
+    }
+
+    // Wrap 205-byte sysex payload in a minimal type-0 MIDI file.
+    function buildMidiFile(sysexData) {
+      function varLen(n) {
+        if (n < 128) return [n];
+        const out = [];
+        let v = n;
+        out.unshift(v & 0x7F);
+        v >>= 7;
+        while (v > 0) { out.unshift(0x80 | (v & 0x7F)); v >>= 7; }
+        return out;
+      }
+
+      // Track event: delta(0) F0 <varlen> <sysexData> F7  +  end-of-track meta
+      const vl = varLen(sysexData.length + 1); // +1 for the trailing F7
+      const trackBytes = [
+        0x00, 0xF0, ...vl, ...sysexData, 0xF7,
+        0x00, 0xFF, 0x2F, 0x00,
+      ];
+
+      const trackLen = trackBytes.length;
+      const file = new Uint8Array(14 + 8 + trackLen);
+      let p = 0;
+
+      // MThd: format 0, 1 track, 96 ticks/quarter
+      for (const b of [0x4D,0x54,0x68,0x64, 0x00,0x00,0x00,0x06,
+                        0x00,0x00, 0x00,0x01, 0x00,0x60]) file[p++] = b;
+
+      // MTrk header + track data
+      for (const b of [0x4D,0x54,0x72,0x6B]) file[p++] = b;
+      file[p++] = (trackLen >>> 24) & 0xFF;
+      file[p++] = (trackLen >>> 16) & 0xFF;
+      file[p++] = (trackLen >>>  8) & 0xFF;
+      file[p++] =  trackLen         & 0xFF;
+      for (const b of trackBytes) file[p++] = b;
+
+      return file;
+    }
+
+    // Scan raw MIDI file bytes for the NuEVI sysex payload.
+    // Returns a Uint8Array(205) or throws.
+    function findSysexInMidi(bytes) {
+      // Signature: vendor(3) + "NuEVIc01"(8) = 11 bytes
+      const sig = [0x00, 0x3E, 0x7F, 0x4E, 0x75, 0x45, 0x56, 0x49, 0x63, 0x30, 0x31];
+      outer: for (let i = 0; i <= bytes.length - SYSEX_DATA_LEN; i++) {
+        for (let j = 0; j < sig.length; j++) {
+          if (bytes[i + j] !== sig[j]) continue outer;
+        }
+        return bytes.subarray(i, i + SYSEX_DATA_LEN);
+      }
+      throw new Error('No NuEVI config sysex found in file');
+    }
+
+    // ── Vue app ──────────────────────────────────────────────────────────────
     createApp({
       setup() {
-        const sections = reactive([]);
-        const loadError = ref('');
-        const loadWarnings = ref([]);
-        const configName = ref('');
+        const sections      = reactive([]);
+        const loadError     = ref('');
+        const loadWarnings  = ref([]);
+        const configName    = ref('');
         const configComment = ref('');
-        const timeCreated = ref('');
-        const fileInput = ref(null);
+        const timeCreated   = ref('');
+        const fileInput     = ref(null);
 
         function getOffset(item) {
           const m = (item.dataModel || '').match(/^offset:(-?\d+)$/);
@@ -116,10 +286,18 @@
           })
           .catch(e => { loadError.value = `Failed to load config-items.json: ${e.message}`; });
 
-        // Flat lookup: id -> item ref, built after sections load
         function findItem(id) {
           for (const section of sections) {
             if (id in section.items) return section.items[id];
+          }
+          return null;
+        }
+
+        function findItemByAddress(addr) {
+          for (const section of sections) {
+            for (const item of Object.values(section.items)) {
+              if (item.address === addr) return item;
+            }
           }
           return null;
         }
@@ -190,102 +368,175 @@
           if (!isNaN(n)) item._raw = toDisplay(n + offset, offset);
         }
 
+        // Reset all items to factory defaults, then apply address→value map.
+        // Returns { version, extraNames } for warning generation.
+        function applySysexValues(addrValues, fileVersion) {
+          for (const section of sections) {
+            for (const item of Object.values(section.items)) {
+              item._raw = toDisplay(item.factoryDefault, getOffset(item));
+              item._error = '';
+            }
+          }
+
+          for (const [addrStr, val] of Object.entries(addrValues)) {
+            const item = findItemByAddress(parseInt(addrStr));
+            if (item) {
+              item._raw = toDisplay(val, getOffset(item));
+              validate(item);
+            }
+          }
+
+          const extraNames = [];
+          for (const section of sections) {
+            for (const item of Object.values(section.items)) {
+              if (item.address === 0) continue; // skip VERSION itself
+              const inSysex = item.address in addrValues;
+              if (inSysex && item.minVersion > fileVersion)
+                extraNames.push(item.friendlyName || item.address);
+            }
+          }
+          return extraNames;
+        }
+
+        // ── Load / save ──────────────────────────────────────────────────────
+
         function triggerLoad() {
           fileInput.value.value = '';
           fileInput.value.click();
         }
 
-        function loadConfig(event) {
+        function loadFile(event) {
           const file = event.target.files[0];
           if (!file) return;
+          if (/\.(mid|syx)$/i.test(file.name)) {
+            loadMidi(file);
+          } else {
+            loadJson(file);
+          }
+        }
+
+        function loadJson(file) {
           const reader = new FileReader();
           reader.onload = e => {
             try {
               loadError.value = '';
               loadWarnings.value = [];
               const data = JSON.parse(e.target.result);
-              configName.value = data.info?.name ?? '';
+              configName.value    = data.info?.name ?? '';
               configComment.value = data.info?.comment ?? '';
-              timeCreated.value = data.info?.timeCreated ?? '';
+              timeCreated.value   = data.info?.timeCreated ?? '';
 
-              const fileConfig = data.config ?? {};
+              const fileConfig  = data.config ?? {};
               const fileVersion = fileConfig.VERSION ?? 0;
 
-              // Reset all items to factory defaults first
-              for (const section of sections) {
+              for (const section of sections)
                 for (const item of Object.values(section.items)) {
                   item._raw = toDisplay(item.factoryDefault, getOffset(item));
                   item._error = '';
                 }
-              }
 
-              // Apply file values
               for (const [id, value] of Object.entries(fileConfig)) {
                 const item = findItem(id);
-                if (item) {
-                  item._raw = toDisplay(value, getOffset(item));
-                  validate(item);
-                }
+                if (item) { item._raw = toDisplay(value, getOffset(item)); validate(item); }
               }
 
-              // Restore timestamp from file (validate() overwrote it)
               timeCreated.value = data.info?.timeCreated ?? timeCreated.value;
 
-              // Generate warnings
-              const missingNames = [];
-              const extraNames = [];
+              const missingNames = [], extraNames = [];
               for (const section of sections) {
                 for (const [id, item] of Object.entries(section.items)) {
                   if (id === 'VERSION') continue;
-                  const inFile = id in fileConfig;
+                  const inFile  = id in fileConfig;
                   const belongs = item.minVersion <= fileVersion;
                   if (belongs && !inFile) missingNames.push(item.friendlyName || id);
                   if (!belongs && inFile) extraNames.push(item.friendlyName || id);
                 }
               }
               const warnings = [];
-              if (missingNames.length > 0)
+              if (missingNames.length)
                 warnings.push(`${missingNames.length} item(s) missing from file, reset to factory defaults: ${missingNames.join(', ')}`);
-              if (extraNames.length > 0)
+              if (extraNames.length)
                 warnings.push(`${extraNames.length} item(s) from a newer config version are loaded but hidden: ${extraNames.join(', ')}`);
               loadWarnings.value = warnings;
             } catch {
-              loadError.value = 'Failed to parse config file.';
+              loadError.value = 'Failed to parse JSON config file.';
             }
           };
           reader.readAsText(file);
         }
 
+        function loadMidi(file) {
+          const reader = new FileReader();
+          reader.onload = e => {
+            try {
+              loadError.value = '';
+              loadWarnings.value = [];
+              const bytes = new Uint8Array(e.target.result);
+              const sysexData = findSysexInMidi(bytes);
+              const { version: fileVersion, values } = parseSysexData(sysexData);
+
+              configName.value    = file.name.replace(/\.(mid|syx)$/i, '');
+              configComment.value = '';
+
+              const extraNames = applySysexValues(values, fileVersion);
+              timeCreated.value = new Date().toISOString();
+
+              if (extraNames.length)
+                loadWarnings.value = [
+                  `${extraNames.length} item(s) from a newer config version are loaded but hidden: ${extraNames.join(', ')}`
+                ];
+            } catch (err) {
+              loadError.value = `Failed to load MIDI file: ${err.message}`;
+            }
+          };
+          reader.readAsArrayBuffer(file);
+        }
+
         function saveConfig() {
           const config = {};
-          for (const section of sections) {
+          for (const section of sections)
             for (const [id, item] of Object.entries(section.items)) {
               if (!itemVisible(item)) continue;
-              const offset = getOffset(item);
               const n = parseInt(item._raw, 10);
-              if (!isNaN(n)) config[id] = n + offset;
+              if (!isNaN(n)) config[id] = n + getOffset(item);
             }
-          }
           const data = {
-            info: {
-              name: configName.value,
-              comment: configComment.value,
-              timeCreated: timeCreated.value || new Date().toISOString(),
-            },
+            info: { name: configName.value, comment: configComment.value,
+                    timeCreated: timeCreated.value || new Date().toISOString() },
             config,
           };
-          const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
-          const url = URL.createObjectURL(blob);
-          const a = document.createElement('a');
-          a.href = url;
-          a.download = (configName.value.trim() || 'nuevi-config') + '.json';
-          a.click();
+          download(JSON.stringify(data, null, 2), 'application/json',
+                   (configName.value.trim() || 'nuevi-config') + '.json');
+        }
+
+        function saveMidi() {
+          const sysexData = buildSysexData(sections, itemVisible, getOffset);
+          const midiFile  = buildMidiFile(sysexData);
+          download(midiFile, 'audio/midi',
+                   (configName.value.trim() || 'nuevi-config') + '.mid');
+        }
+
+        function saveSyx() {
+          const sysexData = buildSysexData(sections, itemVisible, getOffset);
+          download(sysexData, 'application/octet-stream',
+                   (configName.value.trim() || 'nuevi-config') + '.syx');
+        }
+
+        // ── Shared download helper ────────────────────────────────────────────
+
+        function download(data, mime, filename) {
+          const blob = new Blob([data], { type: mime });
+          const url  = URL.createObjectURL(blob);
+          const a    = document.createElement('a');
+          a.href = url; a.download = filename; a.click();
           URL.revokeObjectURL(url);
         }
 
-        return { sections, loadError, loadWarnings, configName, configComment, timeCreated, fileInput,
+        return { sections, loadError, loadWarnings, configName, configComment, timeCreated,
+                 fileInput,
                  touch, validate, normalize, sliderValue, setSlider, itemRangeText,
-                 itemVisible, sectionVisible, step, triggerLoad, loadConfig, saveConfig };
+                 itemVisible, sectionVisible, step,
+                 triggerLoad, loadFile, saveConfig, saveMidi, saveSyx };
       }
     }).mount('#app');
   </script>
