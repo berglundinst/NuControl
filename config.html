@@ -51,19 +51,33 @@
                 <span class="item-id" v-if="item.friendlyName">{{ id }}</span>
               </div>
               <div class="item-right">
-                <span class="item-range">{{ itemRangeText(item) }}</span>
-                <input
-                  type="text"
-                  inputmode="numeric"
-                  v-model="item._raw"
-                  @input="validate(item)"
-                  @blur="validate(item); normalize(item)"
-                >
-                <div class="item-stepper">
-                  <button @click="step(item, 1)">▲</button>
-                  <button @click="step(item, -1)">▼</button>
-                </div>
-                <span class="item-error" v-if="item._error">{{ item._error }}</span>
+                <template v-if="selectOptions(item)">
+                  <select
+                    :value="item._raw"
+                    @change="item._raw = $event.target.value"
+                  >
+                    <option
+                      v-for="opt in selectOptions(item)"
+                      :key="opt.value"
+                      :value="String(opt.value)"
+                    >{{ opt.label }}</option>
+                  </select>
+                </template>
+                <template v-else>
+                  <span class="item-range">{{ itemRangeText(item) }}</span>
+                  <input
+                    type="text"
+                    inputmode="numeric"
+                    v-model="item._raw"
+                    @input="validate(item)"
+                    @blur="validate(item); normalize(item)"
+                  >
+                  <div class="item-stepper">
+                    <button @click="step(item, 1)">▲</button>
+                    <button @click="step(item, -1)">▼</button>
+                  </div>
+                  <span class="item-error" v-if="item._error">{{ item._error }}</span>
+                </template>
               </div>
             </div>
             <input
@@ -327,6 +341,18 @@
           return `${item.min - offset} – ${item.max - offset}`;
         }
 
+        // Parse "select:v;label:v;label:..." → [{value, label}, ...]
+        function selectOptions(item) {
+          const m = (item.uiModel || '').match(/^select:(.+)$/);
+          if (!m) return null;
+          return m[1].split(':').map(part => {
+            const semi = part.indexOf(';');
+            return semi === -1
+              ? { value: parseInt(part), label: part }
+              : { value: parseInt(part.slice(0, semi)), label: part.slice(semi + 1) };
+          });
+        }
+
         function sliderValue(item) {
           const offset = getOffset(item);
           const n = parseInt(item._raw, 10);
@@ -536,7 +562,7 @@
 
         return { sections, loadError, loadWarnings, configName, configComment, timeCreated,
                  fileInput,
-                 touch, validate, normalize, sliderValue, setSlider, itemRangeText,
+                 touch, validate, normalize, sliderValue, setSlider, itemRangeText, selectOptions,
                  itemVisible, sectionVisible, step,
                  triggerLoad, loadFile, saveConfig, saveMidi, saveSyx };
       }
