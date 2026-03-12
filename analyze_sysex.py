@@ -114,6 +114,8 @@ def main():
                 line += f"  {warn('Outside valid range!')}"
         else:
             line = f"  {addr:02X}  (unknown): {raw_val}"
+            if raw_val != 0:
+                line += f"  {warn('Non-zero value in reserved gap!')}"
         print(line)
 
     print()
