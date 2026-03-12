@@ -52,6 +52,9 @@ def find_sysex(data):
 
 # ── Main ──────────────────────────────────────────────────────────────────────
 
+SOFT   = 3   # out-of-range values, non-zero in unassigned space
+MEDIUM = 2   # CRC mismatch, MSB set, unknown vendor
+
 def main():
     if len(sys.argv) > 1:
         path = sys.argv[1]
@@ -66,6 +69,12 @@ def main():
         print(f"Error: {e}", file=sys.stderr)
         sys.exit(1)
 
+    severity = 0   # will be raised to SOFT or MEDIUM as issues are found
+
+    def flag(level):
+        nonlocal severity
+        severity = level if severity == 0 else min(severity, level)
+
     vendor_id    = sysex[0:3]
     command      = sysex[3:11].decode('ascii', errors='replace')
     payload_size = from_midi_u16(sysex[11], sysex[12])
@@ -76,12 +85,14 @@ def main():
         offsets = ', '.join(f'{i:02X}' for i in msb_offenders)
         print(warn(f"MSB set in sysex data at byte offset(s): {offsets}"))
         print()
+        flag(MEDIUM)
 
     # ── Header ────────────────────────────────────────────────────────────────
     vendor_fmt = ' '.join(f'{b:02X}' for b in vendor_id)
     vendor_line = f"Vendor ID:    {vendor_fmt}"
     if vendor_id != KNOWN_VENDOR:
         vendor_line += f"  {warn('(unknown vendor)')}"
+        flag(MEDIUM)
     print(vendor_line)
     print(f"Command:      {command}")
     print(f"Payload size: {payload_size}")
@@ -119,10 +130,12 @@ def main():
             line = f"  {addr:02X}  {item_id}: {display_val}"
             if raw_val < item['min'] or raw_val > item['max']:
                 line += f"  {warn('Outside valid range!')}"
+                flag(SOFT)
         else:
             line = f"  {addr:02X}  (unknown): {raw_val}"
             if raw_val != 0:
                 line += f"  {warn('Non-zero value in unassigned space!')}"
+                flag(SOFT)
         print(line)
 
     print()
@@ -134,6 +147,7 @@ def main():
 
     if stored == NO_CHECKSUM:
         print(f"CRC32: {warn('NO_CHECKSUM magic — not verified')}")
+        flag(MEDIUM)
     else:
         expected = to_midi_crc(crc32(sysex[:checksum_pos]))
         expected_hex = expected.hex().upper()
@@ -141,6 +155,9 @@ def main():
             print(f"CRC32: {stored_hex} OK")
         else:
             print(f"CRC32: {stored_hex}  {warn(f'Invalid — expected {expected_hex}')}")
+            flag(MEDIUM)
+
+    sys.exit(severity)
 
 if __name__ == '__main__':
     main()
