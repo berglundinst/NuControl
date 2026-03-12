@@ -11,7 +11,7 @@ Open `config.html` in a browser — no server, build step, or installation requi
 - **Load / Save** configuration files in three formats:
   - `.json` — human-readable config with name, comment, and timestamp
   - `.mid` — standard type-0 MIDI file containing a NuEVI sysex dump
-  - `.syx` — raw sysex payload (205 bytes), loadable directly from the instrument or librarian software
+  - `.syx` — raw sysex payload, loadable directly from the instrument or librarian software
 - **Version gating** — items introduced in a later firmware version than the loaded config are hidden automatically; loading a file with mismatched items shows a yellow warning
 - **Checksum validation** — CRC32 is verified on load; mismatches warn rather than block
 - **Four input styles** driven by `uiModel` in `config-items.json`:
@@ -23,15 +23,17 @@ Open `config.html` in a browser — no server, build step, or installation requi
 
 ## File format
 
-NuEVI config sysex structure (205 bytes):
+NuEVI config sysex structure:
 
 | Bytes | Content |
 |-------|---------|
 | 0–2 | Vendor ID `00 3E 7F` |
 | 3–10 | Command `NuEVIc01` (ASCII) |
-| 11–12 | Payload size (7-bit MIDI encoded uint16, always 188) |
-| 13–200 | 94 × uint16 config values (7-bit MIDI encoded, 2 bytes each) |
-| 201–204 | CRC32 (IEEE 802.3, 4 bytes with MSB stripped) |
+| 11–12 | Payload size N (7-bit MIDI encoded uint16) |
+| 13–(13+N−1) | N/2 × uint16 config values (7-bit MIDI encoded, 2 bytes each) |
+| (13+N)–(16+N) | CRC32 (IEEE 802.3, 4 bytes with MSB stripped) |
+
+The payload size equals the address of the last config item defined in that firmware version + 2, so it grows as new items are added. When saving, the tool writes the minimum payload needed to cover all visible items.
 
 When wrapped in a `.mid` file the payload sits in a type-0 MIDI file with a single track-0 sysex event.
 
@@ -52,7 +54,7 @@ Defined in `config-items.json` as an array of sections. Each item has:
 }
 ```
 
-`address` is the byte offset within the 188-byte EEPROM payload (always even; each value occupies 2 bytes).
+`address` is the byte offset within the EEPROM payload (always even; each value occupies 2 bytes).
 
 ## Tech stack
 

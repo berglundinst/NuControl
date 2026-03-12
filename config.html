@@ -117,10 +117,11 @@
     const { createApp, reactive, ref, computed } = Vue;
 
     // ── Sysex / MIDI file constants ──────────────────────────────────────────
-    const SYSEX_VENDOR   = [0x00, 0x3E, 0x7F];
-    const SYSEX_HEADER   = 'NuEVIc01';
-    const EEPROM_SIZE    = 188;   // bytes; 94 uint16 values
-    const SYSEX_DATA_LEN = 3 + 8 + 2 + EEPROM_SIZE + 4; // = 205
+    const SYSEX_VENDOR      = [0x00, 0x3E, 0x7F];
+    const SYSEX_HEADER      = 'NuEVIc01';
+    const SYSEX_HEADER_LEN  = 3 + 8 + 2;  // vendor + command + payloadSize field = 13
+    const SYSEX_CRC_LEN     = 4;
+    const sysexTotalLen = payloadSize => SYSEX_HEADER_LEN + payloadSize + SYSEX_CRC_LEN;
 
     // CRC32 (IEEE 802.3 / zlib polynomial, same as the device)
     function crc32(data) {
@@ -149,10 +150,17 @@
       return [(crc >>> 24) & 0x7F, (crc >>> 16) & 0x7F, (crc >>> 8) & 0x7F, crc & 0x7F];
     }
 
-    // Build the 205-byte sysex payload from the current section data.
-    // hiddenPredicate(item) → true means the item is visible/active.
+    // Build the sysex payload from the current section data.
+    // Payload size = (max visible item address + 2), matching the device's own logic.
     function buildSysexData(sections, isVisible, getOffset) {
-      const buf = new Uint8Array(SYSEX_DATA_LEN); // zero-initialised
+      // Find highest address among visible items
+      let maxAddr = 0;
+      for (const section of sections)
+        for (const item of Object.values(section.items))
+          if (isVisible(item)) maxAddr = Math.max(maxAddr, item.address + 2);
+      const payloadSize = maxAddr;
+
+      const buf = new Uint8Array(sysexTotalLen(payloadSize)); // zero-initialised
 
       // Vendor ID
       buf[0] = 0x00; buf[1] = 0x3E; buf[2] = 0x7F;
@@ -161,7 +169,7 @@
       for (let i = 0; i < 8; i++) buf[3 + i] = SYSEX_HEADER.charCodeAt(i);
 
       // Payload size field
-      const [ps0, ps1] = toMidiU16(EEPROM_SIZE);
+      const [ps0, ps1] = toMidiU16(payloadSize);
       buf[11] = ps0; buf[12] = ps1;
 
       // Config values (payload starts at byte 13)
@@ -180,7 +188,7 @@
       }
 
       // CRC32 over everything before the checksum field
-      const checksumPos = payloadBase + EEPROM_SIZE; // 201
+      const checksumPos = payloadBase + payloadSize;
       const crcBytes = toMidiCRC(crc32(buf.subarray(0, checksumPos)));
       buf[checksumPos]     = crcBytes[0];
       buf[checksumPos + 1] = crcBytes[1];
@@ -190,11 +198,11 @@
       return buf;
     }
 
-    // Parse a 205-byte sysex payload.
+    // Parse a NuEVI sysex payload (variable length).
     // Returns { version, values: { address: uint16 } } on success, or throws with a message.
     function parseSysexData(data) {
-      if (data.length < SYSEX_DATA_LEN)
-        throw new Error(`Sysex too short (${data.length} bytes, expected ${SYSEX_DATA_LEN})`);
+      if (data.length < SYSEX_HEADER_LEN + SYSEX_CRC_LEN)
+        throw new Error(`Sysex too short (${data.length} bytes)`);
 
       // Vendor ID
       if (data[0] !== 0x00 || data[1] !== 0x3E || data[2] !== 0x7F)
@@ -207,11 +215,11 @@
 
       // Payload size
       const payloadSize = fromMidiU16(data[11], data[12]);
-      if (payloadSize !== EEPROM_SIZE)
-        throw new Error(`Wrong payload size: ${payloadSize} (expected ${EEPROM_SIZE})`);
+      if (data.length < sysexTotalLen(payloadSize))
+        throw new Error(`Sysex data truncated (have ${data.length} bytes, need ${sysexTotalLen(payloadSize)})`);
 
       // Checksum — NO_CHECKSUM magic = 0x7F007F00 little-endian → bytes [0x00, 0x7F, 0x00, 0x7F]
-      const checksumPos = 13 + EEPROM_SIZE;
+      const checksumPos = 13 + payloadSize;
       const noChecksum = data[checksumPos]===0x00 && data[checksumPos+1]===0x7F &&
                          data[checksumPos+2]===0x00 && data[checksumPos+3]===0x7F;
       let checksumWarning = null;
@@ -270,16 +278,21 @@
       return file;
     }
 
-    // Scan raw MIDI file bytes for the NuEVI sysex payload.
-    // Returns a Uint8Array(205) or throws.
+    // Scan raw bytes for the NuEVI sysex payload (variable length).
+    // Returns a Uint8Array slice or throws.
     function findSysexInMidi(bytes) {
       // Signature: vendor(3) + "NuEVIc01"(8) = 11 bytes
       const sig = [0x00, 0x3E, 0x7F, 0x4E, 0x75, 0x45, 0x56, 0x49, 0x63, 0x30, 0x31];
-      outer: for (let i = 0; i <= bytes.length - SYSEX_DATA_LEN; i++) {
+      const minLen = SYSEX_HEADER_LEN + SYSEX_CRC_LEN;
+      outer: for (let i = 0; i <= bytes.length - minLen; i++) {
         for (let j = 0; j < sig.length; j++) {
           if (bytes[i + j] !== sig[j]) continue outer;
         }
-        return bytes.subarray(i, i + SYSEX_DATA_LEN);
+        // Found — read payload size from header and extract the full block
+        const payloadSize = fromMidiU16(bytes[i + 11], bytes[i + 12]);
+        const totalLen = sysexTotalLen(payloadSize);
+        if (i + totalLen > bytes.length) continue; // truncated, keep scanning
+        return bytes.subarray(i, i + totalLen);
       }
       throw new Error('No NuEVI config sysex found in file');
     }
