@@ -523,21 +523,16 @@
 
               timeCreated.value = data.info?.timeCreated ?? timeCreated.value;
 
-              const missingNames = [], extraNames = [];
+              const warnings = [];
               for (const section of sections) {
                 for (const [id, item] of Object.entries(section.items)) {
                   if (id === 'VERSION') continue;
                   const inFile  = id in fileConfig;
                   const belongs = item.minVersion <= fileVersion;
-                  if (belongs && !inFile) missingNames.push(item.friendlyName || id);
-                  if (!belongs && inFile) extraNames.push(item.friendlyName || id);
+                  if (belongs && !inFile) warnings.push(`Missing item: ${id}`);
+                  if (!belongs && inFile) warnings.push(`Unexpected item: ${id}`);
                 }
               }
-              const warnings = [];
-              if (missingNames.length)
-                warnings.push(`${missingNames.length} item(s) missing from file, reset to factory defaults: ${missingNames.join(', ')}`);
-              if (extraNames.length)
-                warnings.push(`${extraNames.length} item(s) from a newer config version are loaded but hidden: ${extraNames.join(', ')}`);
               loadWarnings.value = warnings;
             } catch {
               loadError.value = 'Failed to parse JSON config file.';
