@@ -34,8 +34,9 @@
   {
     "name": "Portamento",
     "items": {
-      "PORTAM":     { "address": 24,  "friendlyName": "Portamento mode",      "min": 0,   "max": 5,    "factoryDefault": 2,    "minVersion": 24, "uiModel": "select:0;Off:1;On:2;Switch:3;SE-02 Linear:4;SE-02 Exponential:5;Switch only" },
-      "PORTLIMIT":  { "address": 162, "friendlyName": "Portamento limit",     "min": 1,   "max": 127,  "factoryDefault": 127,  "minVersion": 40 }
+      "PORTAM":      { "address": 24,  "friendlyName": "Portamento mode",       "min": 0, "max": 5,   "factoryDefault": 2,   "minVersion": 24, "uiModel": "select:0;Off:1;On:2;Switch:3;SE-02 Linear:4;SE-02 Exponential:5;Switch only" },
+      "PORTLIMIT":   { "address": 162, "friendlyName": "Portamento limit",      "min": 1, "max": 127, "factoryDefault": 127, "minVersion": 40 },
+      "PORT_LO_LIM": { "address": 188, "friendlyName": "Portamento low limit",  "min": 0, "max": 127, "factoryDefault": 0,   "minVersion": 46 }
     }
   },
   {
@@ -100,6 +101,13 @@
     }
   },
   {
+    "name": "Strip",
+    "items": {
+      "STRIPCTL": { "address": 192, "friendlyName": "Strip control mode", "min": 0, "max": 2,   "factoryDefault": 1, "minVersion": 48, "uiModel": "select:0;Off:1;Glide:2;CC" },
+      "STRIPCC":  { "address": 194, "friendlyName": "Strip CC",           "min": 0, "max": 127, "factoryDefault": 1, "minVersion": 48 }
+    }
+  },
+  {
     "name": "Harmonizer",
     "items": {
       "HARMSET":  { "address": 114, "friendlyName": "Harmonizer set",          "min": 0, "max": 6,  "factoryDefault": 0, "minVersion": 35 },
@@ -157,7 +165,8 @@
   {
     "name": "System",
     "items": {
-      "VERSION":   { "address": 0,   "friendlyName": "Config version",  "min": 0, "max": 16383, "factoryDefault": 45, "minVersion": 0 },
+      "VERSION":    { "address": 0,   "friendlyName": "Config version",    "min": 0, "max": 16383, "factoryDefault": 48, "minVersion": 0 },
+      "EXTRA_SRC":  { "address": 190, "friendlyName": "Extra source",      "min": 0, "max": 1,     "factoryDefault": 0,  "minVersion": 47, "uiModel": "select:0;Lip:1;Glide strip" },
       "DIPSW_BITS":{ "address": 66,  "friendlyName": "Flags", "min": 0, "max": 16383, "factoryDefault": 0,  "minVersion": 26, "uiModel": "bitfield:0;Fast boot:1;Legacy:2;Legacy breath active:3;WIDI:4;Gate open:5;Special key:6;BCAS mode" },
       "BATTYPE":   { "address": 112, "friendlyName": "Battery type",    "min": 0, "max": 2,     "factoryDefault": 0,  "minVersion": 35, "uiModel": "select:0;Alkaline:1;NiMH:2;Li-ion" },
       "ROLLER":    { "address": 186, "friendlyName": "Roller mode",     "min": 0, "max": 3,     "factoryDefault": 1,  "minVersion": 45 }
