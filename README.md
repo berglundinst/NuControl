@@ -29,9 +29,11 @@ NuEVI config sysex structure:
 |-------|---------|
 | 0–2 | Vendor ID `00 3E 7F` |
 | 3–10 | Command `NuEVIc01` (ASCII) |
-| 11–12 | Payload size N (7-bit MIDI encoded uint16) |
+| 11–12 | Payload size N (7-bit MIDI encoded uint16), dependent on firmware version |
 | 13–(13+N−1) | N/2 × uint16 config values (7-bit MIDI encoded, 2 bytes each) |
-| (13+N)–(16+N) | CRC32 (IEEE 802.3, 4 bytes with MSB stripped) |
+| (13+N)–(16+N) | CRC32 (IEEE 802.3, 4 bytes with MSB of each byte set to 0) |
+
+MIDI encoding: Each piece of data in the payload is an unsigned integer up to 14 bits in size. It is sent over MIDI as two bytes, using 7 bits per byte (MSB set to 0)
 
 The payload size equals the address of the last config item defined in that firmware version + 2, so it grows as new items are added. When saving, the tool writes the minimum payload needed to cover all visible items.
 
@@ -54,7 +56,7 @@ Defined in `config-items.json` as an array of sections. Each item has:
 }
 ```
 
-`address` is the byte offset within the EEPROM payload (always even; each value occupies 2 bytes).
+`address` is the byte offset within the EEPROM payload (always even; each value occupies 2 bytes, this should always be an even number).
 
 ## Tech stack
 
