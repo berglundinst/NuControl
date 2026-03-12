@@ -117,6 +117,28 @@ def main():
         b1 = sysex[payload_base + addr + 1]
         values[addr] = from_midi_u16(b0, b1)
 
+    # ── Version vs payload-size check ────────────────────────────────────────
+    version = values.get(0, 0)
+    min_required = max(
+        (item['address'] + 2
+         for section in sections
+         for item in section['items'].values()
+         if item.get('minVersion', 0) <= version),
+        default=0
+    )
+    if payload_size < min_required:
+        missing = [
+            item_id
+            for section in sections
+            for item_id, item in section['items'].items()
+            if item.get('minVersion', 0) <= version and item['address'] + 2 > payload_size
+        ]
+        print(warn(f"Payload too small for version {version}: "
+                   f"{payload_size} bytes, expected at least {min_required} "
+                   f"(missing: {', '.join(missing)})"))
+        print()
+        flag(SOFT)
+
     # Print each address
     for addr in sorted(values):
         raw_val = values[addr]
