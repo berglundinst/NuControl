@@ -1,6 +1,6 @@
 # NuControl
 
-A browser-based configuration editor for the [NuEVI](https://berglundaudio.com/) wind controller (EWI-style MIDI instrument by Berglund Audio).
+A browser-based configuration editor for the [Berglund Instruments](https://berglundinstruments.com/) [NuEVI](https://berglundinstruments.com/nuevi-trumpet-horn-tuba-fingering-instrument/) wind controller.
 
 ## Usage
 
