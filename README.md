@@ -2,6 +2,8 @@
 
 A browser-based configuration editor for the [Berglund Instruments](https://berglundinstruments.com/) [NuEVI](https://berglundinstruments.com/nuevi-trumpet-horn-tuba-fingering-instrument/) wind controller.
 
+Use this live at [config.berglundinstruments.com](http://config.berglundinstruments.com)
+
 ## Usage
 
 Serve the directory with a local HTTP server (required so the browser can fetch `config-items.json`):
