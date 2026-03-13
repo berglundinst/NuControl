@@ -164,7 +164,8 @@ h1 {
   margin-left: 4px;
 }
 
-.midi-status--error { color: #ff8080; }
+.midi-status--error     { color: #ff8080; }
+.midi-status--connected { color: #66cc66; }
 
 .section-heading {
   font-size: 13px;

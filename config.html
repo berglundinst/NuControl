@@ -36,7 +36,7 @@
       <button @click="refreshMidi" title="Refresh device list">↻</button>
       <button @click="sendToInstrument" :disabled="!midiDeviceId">Send to instrument</button>
       <button @click="getFromInstrument" :disabled="!midiDeviceId || midiWaiting">Get from instrument</button>
-      <span class="midi-status" :class="{ 'midi-status--error': midiStatusErr }" v-if="midiStatus">{{ midiStatus }}</span>
+      <span class="midi-status" :class="{ 'midi-status--error': midiStatusErr, 'midi-status--connected': midiStatusConnected }" v-if="midiStatus">{{ midiStatus }}</span>
     </div>
 
     <div class="warn-banner" v-if="loadWarnings.length">
@@ -125,7 +125,7 @@
   </div>
 
   <script>
-    const { createApp, reactive, ref, computed } = Vue;
+    const { createApp, reactive, ref, computed, watch } = Vue;
 
     // ── Sysex / MIDI file constants ──────────────────────────────────────────
     const SYSEX_VENDOR      = [0x00, 0x3E, 0x7F];
@@ -324,7 +324,11 @@
         const midiDeviceId  = ref('');
         const midiStatus    = ref('');
         const midiStatusErr = ref(false);
-        const midiWaiting   = ref(false);
+        const midiWaiting       = ref(false);
+        const midiStatusConnected = computed(() =>
+          midiStatus.value.startsWith('Connected') ||
+          midiStatus.value.startsWith('Config loaded') ||
+          midiStatus.value === 'Sent.');
 
         function getOffset(item) {
           const m = (item.dataModel || '').match(/^offset:(-?\d+)$/);
@@ -537,6 +541,61 @@
           enumerateMidiDevices();
         }
 
+        // Query device info via NuEVIc03 → NuEVIc04 response.
+        // Response inner bytes: vendor(3) + "NuEVIc04"(8) + configVer(2) + fwVer(8) = 21 bytes
+        function queryDevice() {
+          const dev = midiDevices.value.find(d => d.id === midiDeviceId.value);
+          if (!dev?.output || !dev?.input) return;
+
+          const req = new Uint8Array(13);
+          req[0] = 0xF0;
+          SYSEX_VENDOR.forEach((b, i) => { req[1 + i] = b; });
+          const reqCmd = 'NuEVIc03';
+          for (let i = 0; i < 8; i++) req[4 + i] = reqCmd.charCodeAt(i);
+          req[12] = 0xF7;
+          console.log(`[MIDI TX] Querying device (NuEVIc03) → ${dev.name}`);
+          dev.output.send(req);
+
+          let buf = [], inSysex = false, active = true;
+          const timeoutId = setTimeout(() => {
+            active = false;
+            console.log(`[MIDI] Query timed out (no NuEVIc04 response)`);
+          }, 3000);
+
+          dev.input.onmidimessage = event => {
+            if (!active) return;
+            for (const byte of event.data) {
+              if (byte === 0xF0) { buf = [0xF0]; inSysex = true; }
+              else if (inSysex) {
+                buf.push(byte);
+                if (byte === 0xF7) {
+                  inSysex = false;
+                  const inner = new Uint8Array(buf.slice(1, -1));
+                  const hex = b => b.toString(16).padStart(2, '0');
+                  const rawHex = Array.from(inner).map(hex).join(' ');
+                  if (inner.length < 13) {
+                    console.log(`[MIDI RX] Short sysex (${inner.length} bytes): ${rawHex}`);
+                    return;
+                  }
+                  const hdr = String.fromCharCode(...inner.subarray(3, 11));
+                  if (hdr !== 'NuEVIc04') {
+                    console.log(`[MIDI RX] Unexpected command "${hdr}": ${rawHex}`);
+                    return;
+                  }
+                  console.log(`[MIDI RX] Query response (NuEVIc04): ${rawHex}`);
+                  active = false;
+                  clearTimeout(timeoutId);
+                  dev.input.onmidimessage = null;
+                  const configVer = fromMidiU16(inner[11], inner[12]);
+                  const fwVer = String.fromCharCode(...inner.subarray(13)).trim();
+                  midiStatus.value = `Connected to ${dev.name} ${fwVer}, config version ${configVer}`;
+                  midiStatusErr.value = false;
+                }
+              }
+            }
+          };
+        }
+
         function sendToInstrument() {
           const dev = midiDevices.value.find(d => d.id === midiDeviceId.value);
           if (!dev?.output) {
@@ -549,6 +608,7 @@
           msg[0] = 0xF0;
           msg.set(sysexData, 1);
           msg[msg.length - 1] = 0xF7;
+          console.log(`[MIDI TX] Sending config (NuEVIc02) → ${dev.name}, ${msg.length} bytes`);
           dev.output.send(msg);
           midiStatus.value = 'Sent.';
           midiStatusErr.value = false;
@@ -575,6 +635,7 @@
           const reqCmd = 'NuEVIc00';
           for (let i = 0; i < 8; i++) req[4 + i] = reqCmd.charCodeAt(i);
           req[12] = 0xF7;
+          console.log(`[MIDI TX] Requesting config (NuEVIc00) → ${dev.name}`);
           dev.output.send(req);
 
           midiStatus.value = 'Waiting for response\u2026';
@@ -605,7 +666,13 @@
                   const inner = new Uint8Array(buf.slice(1, -1));
                   if (inner.length < 11) return;
                   const hdr = String.fromCharCode(...inner.subarray(3, 11));
-                  if (hdr !== 'NuEVIc01') return; // not our response, keep waiting
+                  if (hdr !== 'NuEVIc01') {
+                    const hex = b => b.toString(16).padStart(2, '0');
+                    console.log(`[MIDI RX] Unexpected command "${hdr}": ${Array.from(inner.subarray(0, 16)).map(hex).join(' ')}…`);
+                    return;
+                  }
+                  const hex = b => b.toString(16).padStart(2, '0');
+                  console.log(`[MIDI RX] Config dump (NuEVIc01), ${inner.length} bytes. Header+payload start: ${Array.from(inner.subarray(0, 20)).map(hex).join(' ')}…`);
                   cleanup();
                   try {
                     const { version: fileVersion, values, checksumWarning, vendorId } = parseSysexData(inner);
@@ -635,6 +702,11 @@
         }
 
         initMidi();
+        watch(midiDeviceId, newId => {
+          midiStatus.value = '';
+          midiStatusErr.value = false;
+          if (newId) queryDevice();
+        });
 
         // ── Load / save ──────────────────────────────────────────────────────
 
@@ -755,7 +827,11 @@
 
         function saveSyx() {
           const sysexData = buildSysexData(sections, itemVisible, getOffset);
-          download(sysexData, 'application/octet-stream',
+          const wrapped = new Uint8Array(sysexData.length + 2);
+          wrapped[0] = 0xF0;
+          wrapped.set(sysexData, 1);
+          wrapped[wrapped.length - 1] = 0xF7;
+          download(wrapped, 'application/octet-stream',
                    (configName.value.trim() || 'nuevi-config') + '.syx');
         }
 
@@ -775,8 +851,8 @@
                  bitfieldBits, getBit, setBit,
                  itemVisible, sectionVisible, step,
                  triggerLoad, loadFile, saveConfig, saveMidi, saveSyx,
-                 midiDevices, midiDeviceId, midiStatus, midiStatusErr, midiWaiting,
-                 refreshMidi, sendToInstrument, getFromInstrument };
+                 midiDevices, midiDeviceId, midiStatus, midiStatusErr, midiStatusConnected, midiWaiting,
+                 refreshMidi, queryDevice, sendToInstrument, getFromInstrument };
       }
     }).mount('#app');
   </script>
