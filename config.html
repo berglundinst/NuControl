@@ -511,6 +511,8 @@
             byName[port.name].output = port;
           }
           midiDevices.value = Object.values(byName);
+          const nuDevices = midiDevices.value.filter(d => /^Nu(EVI|RAD)/i.test(d.name));
+          if (nuDevices.length === 1) midiDeviceId.value = nuDevices[0].id;
         }
 
         function initMidi() {
