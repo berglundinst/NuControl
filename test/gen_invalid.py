@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Generate invalid test sysex files from default_47.syx."""
+"""Generate invalid test sysex files from default_48.syx."""
 
 import os
 
@@ -29,7 +29,9 @@ def to_midi_crc(crc):
 def add_crc(data):
     return bytes(data) + to_midi_crc(crc32(bytes(data)))
 
-def save(name, data):
+def save(name, inner):
+    """Wrap inner bytes in F0/F7 and write to file."""
+    data = bytes([0xF0]) + bytes(inner) + bytes([0xF7])
     path = os.path.join(SCRIPT_DIR, name)
     open(path, 'wb').write(data)
     print(f"  {name}: {len(data)} bytes")
@@ -37,11 +39,15 @@ def save(name, data):
 HEADER_LEN = 13
 CRC_LEN = 4
 
-raw = open(os.path.join(SCRIPT_DIR, 'default_47.syx'), 'rb').read()
-payload_size = from_midi_u16(raw[11], raw[12])  # 188
+# Strip F0/F7 framing — all offsets below are into the inner bytes
+raw_file = open(os.path.join(SCRIPT_DIR, 'default_48.syx'), 'rb').read()
+assert raw_file[0] == 0xF0 and raw_file[-1] == 0xF7, "Expected F0/F7 framing"
+raw = bytearray(raw_file[1:-1])
+
+payload_size = from_midi_u16(raw[11], raw[12])  # 196
 version = from_midi_u16(raw[13], raw[14])        # VERSION field at address 0
 
-print(f"Source: default_47.syx  payload_size={payload_size}  VERSION={version}")
+print(f"Source: default_48.syx  payload_size={payload_size}  VERSION={version}")
 print("Generating:")
 
 # Helpers: base = header + payload (no CRC)
@@ -51,10 +57,10 @@ def base():
 # ── invalid_crc: replace CRC bytes with junk ─────────────────────────────────
 data = bytearray(raw)
 data[-4:] = bytes([0x12, 0x34, 0x56, 0x78])
-save('invalid_crc.syx', bytes(data))
+save('invalid_crc.syx', data)
 
 # ── invalid_msb: set MSB on low byte of BREATH_THR (addr 2) and DIPSW_BITS (addr 66)
-# File offsets: addr N → bytes 13+N (high), 13+N+1 (low)
+# Inner offsets: addr N → bytes 13+N (high), 13+N+1 (low)
 # BREATH_THR low byte: 13+2+1 = 16
 # DIPSW_BITS low byte: 13+66+1 = 80
 data = base()
@@ -63,8 +69,8 @@ data[80] |= 0x80   # DIPSW_BITS low byte
 save('invalid_msb.syx', add_crc(data))
 
 # ── invalid_range: BREATH_THR=5000 (max=4095), OCTAVE=10 (max=6)
-# BREATH_THR: file bytes 15,16 (addr 2)
-# OCTAVE: file bytes 53,54 (addr 40)
+# BREATH_THR: inner bytes 15,16 (addr 2)
+# OCTAVE: inner bytes 53,54 (addr 40)
 data = base()
 data[15], data[16] = to_midi_u16(5000)
 data[53], data[54] = to_midi_u16(10)
@@ -72,27 +78,27 @@ save('invalid_range.syx', add_crc(data))
 
 # ── invalid_unused: non-zero data at gap addresses 142 and 144
 # (gap between FWCTYPE@140 and HMZKEY@150)
-# File bytes: addr 142 → 155,156;  addr 144 → 157,158
+# Inner bytes: addr 142 → 155,156;  addr 144 → 157,158
 data = base()
 data[155], data[156] = to_midi_u16(42)
 data[157], data[158] = to_midi_u16(17)
 save('invalid_unused.syx', add_crc(data))
 
-# ── invalid_version: VERSION says 47 but payload only covers up to version 40
+# ── invalid_version: VERSION says 48 but payload only covers up to version 40
 # Max address for version-40 items: LEVER_MAX at addr 166 → payload_size = 168
 V40_PAYLOAD_SIZE = 168
 data = bytearray(raw[:HEADER_LEN + V40_PAYLOAD_SIZE])
 data[11], data[12] = to_midi_u16(V40_PAYLOAD_SIZE)   # update size field
-data[13], data[14] = to_midi_u16(47)                  # set VERSION = 47
+data[13], data[14] = to_midi_u16(48)                  # set VERSION = 48
 save('invalid_version.syx', add_crc(data))
 
-# ── invalid_size: payload_size field says 180 (8 less than actual 188 payload bytes)
-# Full 188-byte payload is present; CRC covers all of it (at offset 201).
-# Parser reads size=180, looks for CRC at offset 193 — finds payload data instead,
+# ── invalid_size: payload_size field says 188 (8 less than actual 196 payload bytes)
+# Full 196-byte payload is present; CRC covers all of it (at offset 209).
+# Parser reads size=188, looks for CRC at offset 201 — finds payload data instead,
 # so CRC check fails. Version/size check also fires (payload < expected for version).
-data = base()                                          # 13+188 = 201 bytes
-data[11], data[12] = to_midi_u16(180)                 # size field says 180
-save('invalid_size.syx', add_crc(data))               # CRC over all 201 bytes, at 201
+data = base()                                          # 13+196 = 209 bytes
+data[11], data[12] = to_midi_u16(188)                 # size field says 188
+save('invalid_size.syx', add_crc(data))               # CRC over all 209 bytes, at 209
 
 # ── invalid_command: change "NuEVIc01" → "NuFOOx99" (scanner won't find it)
 data = base()

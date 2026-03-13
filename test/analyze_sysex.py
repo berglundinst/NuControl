@@ -63,6 +63,12 @@ def main():
     else:
         raw = sys.stdin.buffer.read()
 
+    is_midi = raw[:4] == b'MThd'
+    has_framing = raw[:1] == bytes([0xF0]) and raw[-1:] == bytes([0xF7])
+    if not is_midi and not has_framing:
+        print("Note: File does not include SysEx 0xF0/F7 framing")
+        print()
+
     try:
         sysex = find_sysex(raw)
     except ValueError as e:
@@ -100,7 +106,7 @@ def main():
 
     # ── Config items ──────────────────────────────────────────────────────────
     script_dir  = os.path.dirname(os.path.abspath(__file__))
-    config_path = os.path.join(script_dir, 'config-items.json')
+    config_path = os.path.join(script_dir, '..', 'config-items.json')
     with open(config_path) as f:
         sections = json.load(f)
 
