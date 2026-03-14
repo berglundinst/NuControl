@@ -5,10 +5,10 @@
       "BREATH_MAX": { "address": 4,   "friendlyName": "Breath maximum",             "min": 0,    "max": 4095, "factoryDefault": 4000, "minVersion": 24, "uiModel": "slider" },
       "PITCHB_THR": { "address": 10,  "friendlyName": "Pitch bend threshold",       "min": 500,  "max": 4000, "factoryDefault": 2000, "minVersion": 24, "uiModel": "slider" },
       "PITCHB_MAX": { "address": 12,  "friendlyName": "Pitch bend maximum",         "min": 500,  "max": 4000, "factoryDefault": 3000, "minVersion": 24, "uiModel": "slider" },
-      "PORTAM_THR": { "address": 6,   "friendlyName": "Portamento threshold",       "min": 700,  "max": 4700, "factoryDefault": 2600, "minVersion": 24, "uiModel": "slider" },
-      "PORTAM_MAX": { "address": 8,   "friendlyName": "Portamento maximum",         "min": 700,  "max": 4700, "factoryDefault": 3300, "minVersion": 24, "uiModel": "slider" },
-      "EXTRAC_THR": { "address": 34,  "friendlyName": "Extra control threshold",    "min": 500,  "max": 4000, "factoryDefault": 2800, "minVersion": 24, "uiModel": "slider" },
-      "EXTRAC_MAX": { "address": 36,  "friendlyName": "Extra control maximum",      "min": 500,  "max": 4000, "factoryDefault": 3500, "minVersion": 24, "uiModel": "slider" },
+      "PORTAM_THR": { "address": 6,   "friendlyName": "Bite threshold",             "min": 700,  "max": 4700, "factoryDefault": 2600, "minVersion": 24, "uiModel": "slider" },
+      "PORTAM_MAX": { "address": 8,   "friendlyName": "Bite maximum",               "min": 700,  "max": 4700, "factoryDefault": 3300, "minVersion": 24, "uiModel": "slider" },
+      "EXTRAC_THR": { "address": 34,  "friendlyName": "Extra controller threshold", "min": 500,  "max": 4000, "factoryDefault": 2800, "minVersion": 24, "uiModel": "slider" },
+      "EXTRAC_MAX": { "address": 36,  "friendlyName": "Extra controller maximum",   "min": 500,  "max": 4000, "factoryDefault": 3500, "minVersion": 24, "uiModel": "slider" },
       "CTOUCH_THR": { "address": 42,  "friendlyName": "Capacitive touch threshold", "min": 50,   "max": 350,  "factoryDefault": 125, "minVersion": 24, "uiModel": "slider" },
       "LEVER_THR":  { "address": 164, "friendlyName": "Lever threshold",            "min": 1400, "max": 2000, "factoryDefault": 1700, "minVersion": 40, "uiModel": "slider" },
       "LEVER_MAX":  { "address": 166, "friendlyName": "Lever maximum",              "min": 1400, "max": 2000, "factoryDefault": 1800, "minVersion": 40, "uiModel": "slider" }
@@ -34,22 +34,22 @@
   {
     "name": "Portamento",
     "items": {
-      "PORTAM":      { "address": 24,  "friendlyName": "Portamento mode",       "min": 0, "max": 5,   "factoryDefault": 2,   "minVersion": 24, "uiModel": "select:0;Off:1;On:2;Switch:3;SE-02 Linear:4;SE-02 Exponential:5;Switch only" },
-      "PORTLIMIT":   { "address": 162, "friendlyName": "Portamento limit",      "min": 1, "max": 127, "factoryDefault": 127, "minVersion": 40 },
-      "PORT_LO_LIM": { "address": 188, "friendlyName": "Portamento low limit",  "min": 0, "max": 127, "factoryDefault": 0,   "minVersion": 46 }
+      "PORTAM":      { "address": 24,  "friendlyName": "Glide mode",       "min": 0, "max": 5,   "factoryDefault": 2,   "minVersion": 24, "uiModel": "select:0;Off:1;On:2;Switch:3;SE-02 Linear:4;SE-02 Exponential:5;Switch only" },
+      "PORTLIMIT":   { "address": 162, "friendlyName": "Glide max limit",  "min": 1, "max": 127, "factoryDefault": 127, "minVersion": 40 },
+      "PORT_LO_LIM": { "address": 188, "friendlyName": "Glide min limit",  "min": 0, "max": 127, "factoryDefault": 0,   "minVersion": 46 }
     }
   },
   {
     "name": "Vibrato",
     "items": {
-      "VIBRATO":          { "address": 30, "friendlyName": "Vibrato depth",              "min": 0, "max": 9,  "factoryDefault": 4,  "minVersion": 24 },
-      "VIB_SENS":         { "address": 80, "friendlyName": "Vibrato sensitivity",        "min": 1, "max": 12, "factoryDefault": 6,  "minVersion": 29 },
-      "VIB_RETN":         { "address": 82, "friendlyName": "Vibrato return",             "min": 0, "max": 4,  "factoryDefault": 2,  "minVersion": 29 },
-      "VIB_SQUELCH":      { "address": 84, "friendlyName": "Vibrato squelch",            "min": 1, "max": 30, "factoryDefault": 12, "minVersion": 31 },
-      "VIB_DIRECTION":    { "address": 86, "friendlyName": "Vibrato direction",          "min": 0, "max": 1,  "factoryDefault": 0,  "minVersion": 31, "uiModel": "select:0;Down:1;Up" },
-      "VIB_CONTROL":      { "address": 96, "friendlyName": "Vibrato control source",     "min": 0, "max": 2,  "factoryDefault": 0,  "minVersion": 32, "uiModel": "select:0;Breath:1;Bite:2;Lever" },
-      "VIB_SENS_BITE":    { "address": 92, "friendlyName": "Vibrato sensitivity (bite)", "min": 1, "max": 17, "factoryDefault": 8,  "minVersion": 32 },
-      "VIB_SQUELCH_BITE": { "address": 94, "friendlyName": "Vibrato squelch (bite)",     "min": 1, "max": 30, "factoryDefault": 15, "minVersion": 32 }
+      "VIBRATO":          { "address": 30, "friendlyName": "Vibrato depth",                     "min": 0, "max": 9,  "factoryDefault": 4,  "minVersion": 24 },
+      "VIB_RETN":         { "address": 82, "friendlyName": "Vibrato return",                    "min": 0, "max": 4,  "factoryDefault": 2,  "minVersion": 29 },
+      "VIB_DIRECTION":    { "address": 86, "friendlyName": "Vibrato direction",                 "min": 0, "max": 1,  "factoryDefault": 0,  "minVersion": 31, "uiModel": "select:0;Down:1;Up" },
+      "VIB_SENS":         { "address": 80, "friendlyName": "Vibrato sensitivity (lever/pad)",   "min": 1, "max": 12, "factoryDefault": 6,  "minVersion": 29 },
+      "VIB_SQUELCH":      { "address": 84, "friendlyName": "Vibrato squelch (lever/pad)",       "min": 1, "max": 30, "factoryDefault": 12, "minVersion": 31 },
+      "VIB_SENS_BITE":    { "address": 92, "friendlyName": "Vibrato sensitivity (bite)",        "min": 1, "max": 17, "factoryDefault": 8,  "minVersion": 32 },
+      "VIB_SQUELCH_BITE": { "address": 94, "friendlyName": "Vibrato squelch (bite)",            "min": 1, "max": 30, "factoryDefault": 15, "minVersion": 32 },
+      "VIB_CONTROL":      { "address": 96, "friendlyName": "Vibrato control source",            "min": 0, "max": 2,  "factoryDefault": 0,  "minVersion": 32, "uiModel": "select:0;Breath:1;Bite:2;Lever" }
     }
   },
   {
@@ -61,7 +61,7 @@
       "PATCH":      { "address": 38,  "friendlyName": "Patch",                "min": 0, "max": 127, "factoryDefault": 1,   "minVersion": 24 },
       "VELOCITY":   { "address": 22,  "friendlyName": "Velocity",             "min": 0, "max": 127, "factoryDefault": 0,   "minVersion": 24 },
       "VEL_SMP_DL": { "address": 46,  "friendlyName": "Velocity sample delay","min": 0, "max": 30,  "factoryDefault": 20,  "minVersion": 24 },
-      "VEL_BIAS":   { "address": 48,  "friendlyName": "Velocity bias",        "min": 0, "max": 9,   "factoryDefault": 0,   "minVersion": 24 },
+      "VEL_BIAS":   { "address": 48,  "friendlyName": "Velocity boost",       "min": 0, "max": 9,   "factoryDefault": 0,   "minVersion": 24 },
       "LEVEL_CC":   { "address": 104, "friendlyName": "Level CC",             "min": 0, "max": 127, "factoryDefault": 11,  "minVersion": 33 },
       "LEVEL_VAL":  { "address": 106, "friendlyName": "Level value",          "min": 0, "max": 127, "factoryDefault": 127, "minVersion": 33 }
     }
@@ -69,21 +69,19 @@
   {
     "name": "Keys",
     "items": {
-      "PINKY_KEY":      { "address": 50,  "friendlyName": "Pinky key",         "min": 0, "max": 31,  "factoryDefault": 12, "minVersion": 24 },
-      "EXTRA":          { "address": 28,  "friendlyName": "Extra key",         "min": 0, "max": 4,   "factoryDefault": 1,  "minVersion": 24 },
-      "EXTRA2":         { "address": 102, "friendlyName": "Extra 2",           "min": 0, "max": 127, "factoryDefault": 0,  "minVersion": 33 },
-      "FINGER":         { "address": 108, "friendlyName": "Fingering system",  "min": 0, "max": 3,   "factoryDefault": 0,  "minVersion": 34 },
-      "LPINKY3":        { "address": 110, "friendlyName": "Left pinky 3",      "min": 0, "max": 25,  "factoryDefault": 0,  "minVersion": 34 },
-      "OTFKEY":         { "address": 160, "friendlyName": "On-the-fly key",    "min": 0, "max": 1,   "factoryDefault": 0,  "minVersion": 39 },
-      "DEGLITCH":       { "address": 32,  "friendlyName": "De-glitch",         "min": 0, "max": 70,  "factoryDefault": 20, "minVersion": 24 },
-      "TRILL3_INTERVAL":{ "address": 98,  "friendlyName": "Trill 3 interval",  "min": 3, "max": 4,   "factoryDefault": 4,  "minVersion": 32 },
-      "FP1":            { "address": 52,  "friendlyName": "Fast patch 1",      "min": 0, "max": 127, "factoryDefault": 0,  "minVersion": 26 },
-      "FP2":            { "address": 54,  "friendlyName": "Fast patch 2",      "min": 0, "max": 127, "factoryDefault": 0,  "minVersion": 26 },
-      "FP3":            { "address": 56,  "friendlyName": "Fast patch 3",      "min": 0, "max": 127, "factoryDefault": 0,  "minVersion": 26 },
-      "FP4":            { "address": 58,  "friendlyName": "Fast patch 4",      "min": 0, "max": 127, "factoryDefault": 0,  "minVersion": 26 },
-      "FP5":            { "address": 60,  "friendlyName": "Fast patch 5",      "min": 0, "max": 127, "factoryDefault": 0,  "minVersion": 26 },
-      "FP6":            { "address": 62,  "friendlyName": "Fast patch 6",      "min": 0, "max": 127, "factoryDefault": 0,  "minVersion": 26 },
-      "FP7":            { "address": 64,  "friendlyName": "Fast patch 7",      "min": 0, "max": 127, "factoryDefault": 0,  "minVersion": 26 }
+      "FINGER":         { "address": 108, "friendlyName": "Fingering system",       "min": 0, "max": 3,   "factoryDefault": 0,  "minVersion": 34 },
+      "ROLLER":         { "address": 186, "friendlyName": "Roller mode",            "min": 0, "max": 3,   "factoryDefault": 1,  "minVersion": 45 },
+      "DEGLITCH":       { "address": 32,  "friendlyName": "De-glitch",              "min": 0, "max": 70,  "factoryDefault": 20, "minVersion": 24 },
+      "PINKY_KEY":      { "address": 50,  "friendlyName": "Pinky key/Mod key",      "min": 0, "max": 31,  "factoryDefault": 12, "minVersion": 24 },
+      "LPINKY3":        { "address": 110, "friendlyName": "Left pinky 3",           "min": 0, "max": 25,  "factoryDefault": 0,  "minVersion": 34 },
+      "TRILL3_INTERVAL":{ "address": 98,  "friendlyName": "Trill 3 interval",       "min": 3, "max": 4,   "factoryDefault": 4,  "minVersion": 32 },
+      "FP1":            { "address": 52,  "friendlyName": "Fast patch 1",           "min": 0, "max": 127, "factoryDefault": 0,  "minVersion": 26 },
+      "FP2":            { "address": 54,  "friendlyName": "Fast patch 2",           "min": 0, "max": 127, "factoryDefault": 0,  "minVersion": 26 },
+      "FP3":            { "address": 56,  "friendlyName": "Fast patch 3",           "min": 0, "max": 127, "factoryDefault": 0,  "minVersion": 26 },
+      "FP4":            { "address": 58,  "friendlyName": "Fast patch 4",           "min": 0, "max": 127, "factoryDefault": 0,  "minVersion": 26 },
+      "FP5":            { "address": 60,  "friendlyName": "Fast patch 5",           "min": 0, "max": 127, "factoryDefault": 0,  "minVersion": 26 },
+      "FP6":            { "address": 62,  "friendlyName": "Fast patch 6",           "min": 0, "max": 127, "factoryDefault": 0,  "minVersion": 26 },
+      "FP7":            { "address": 64,  "friendlyName": "Fast patch 7",           "min": 0, "max": 127, "factoryDefault": 0,  "minVersion": 26 }
     }
   },
   {
@@ -101,25 +99,32 @@
     }
   },
   {
-    "name": "Strip",
+    "name": "Strip/Aux",
     "items": {
-      "STRIPCTL": { "address": 192, "friendlyName": "Strip control mode", "min": 0, "max": 2,   "factoryDefault": 1, "minVersion": 48, "uiModel": "select:0;Off:1;Glide:2;CC" },
-      "STRIPCC":  { "address": 194, "friendlyName": "Strip CC",           "min": 0, "max": 127, "factoryDefault": 1, "minVersion": 48 }
+      "STRIPCTL": { "address": 192, "friendlyName": "Strip/Aux control mode", "min": 0, "max": 2,   "factoryDefault": 1, "minVersion": 48, "uiModel": "select:0;Off:1;Glide:2;CC" },
+      "STRIPCC":  { "address": 194, "friendlyName": "Strip/Aux CC",           "min": 0, "max": 127, "factoryDefault": 1, "minVersion": 48 }
+    }
+  },
+  {
+    "name": "Extra Controller (lip sensor)",
+    "items": {
+      "EXTRA":    { "address": 28,  "friendlyName": "Extra controller CC A",             "min": 0, "max": 4,   "factoryDefault": 1,  "minVersion": 24 },
+      "EXTRA2":   { "address": 102, "friendlyName": "Extra controller CC B",             "min": 0, "max": 127, "factoryDefault": 0,  "minVersion": 33 },
+      "HARMSET":  { "address": 114, "friendlyName": "Extra controller harmonic series)", "min": 0, "max": 6,  "factoryDefault": 0, "minVersion": 35 },
+      "HARMSEL":  { "address": 116, "friendlyName": "Harmonic series select",           "min": 0, "max": 7,  "factoryDefault": 0, "minVersion": 35 }
     }
   },
   {
     "name": "Harmonizer",
     "items": {
-      "HARMSET":  { "address": 114, "friendlyName": "Harmonizer set",          "min": 0, "max": 6,  "factoryDefault": 0, "minVersion": 35 },
-      "HARMSEL":  { "address": 116, "friendlyName": "Harmonizer select",       "min": 0, "max": 7,  "factoryDefault": 0, "minVersion": 35 },
+      "POLYSEL":  { "address": 138, "friendlyName": "Poly Mode",               "min": 0, "max": 10, "factoryDefault": 0, "minVersion": 36 },
       "HMZKEY":   { "address": 150, "friendlyName": "Harmonizer key",          "min": 0, "max": 11, "factoryDefault": 0, "minVersion": 36 },
+      "OTFKEY":   { "address": 160, "friendlyName": "On-the-fly key change",   "min": 0, "max": 1,   "factoryDefault": 0,  "minVersion": 39 },
       "HMZLIMIT": { "address": 156, "friendlyName": "Harmonizer limit",        "min": 2, "max": 5,  "factoryDefault": 5, "minVersion": 38 },
-      "BRHARMSET":{ "address": 168, "friendlyName": "Breath harmonizer set",   "min": 0, "max": 6,  "factoryDefault": 0, "minVersion": 41 },
-      "BRHARMSEL":{ "address": 170, "friendlyName": "Breath harmonizer select","min": 0, "max": 3,  "factoryDefault": 0, "minVersion": 41 },
-      "FWCTYPE":  { "address": 140, "friendlyName": "FWC type",             "min": 0, "max": 4,  "factoryDefault": 0, "minVersion": 36 },
-      "FWCLCH":   { "address": 152, "friendlyName": "FWC lock harmonizer",     "min": 0, "max": 1,  "factoryDefault": 0, "minVersion": 37 },
-      "FWCDP2":   { "address": 154, "friendlyName": "FWC drop 2",           "min": 0, "max": 1,  "factoryDefault": 0, "minVersion": 37 },
-      "POLYSEL":  { "address": 138, "friendlyName": "Poly select",          "min": 0, "max": 10, "factoryDefault": 0, "minVersion": 36 }
+      "FWCTYPE":  { "address": 140, "friendlyName": "FWC type",                "min": 0, "max": 4,  "factoryDefault": 0, "minVersion": 36 },
+      "FWCLCH":   { "address": 152, "friendlyName": "FWC lock hands",          "min": 0, "max": 1,  "factoryDefault": 0, "minVersion": 37 },
+      "FWCDP2":   { "address": 154, "friendlyName": "FWC drop 2",              "min": 0, "max": 1,  "factoryDefault": 0, "minVersion": 37 },
+      "PRIO":     { "address": 78,  "friendlyName": "Priority",                "min": 0, "max": 1,  "factoryDefault": 0,  "minVersion": 28 }
     }
   },
   {
@@ -129,8 +134,7 @@
       "ROTN1": { "address": 70, "friendlyName": "Rotation 1", "min": 0, "max": 48, "factoryDefault": 19, "minVersion": 28 },
       "ROTN2": { "address": 72, "friendlyName": "Rotation 2", "min": 0, "max": 48, "factoryDefault": 14, "minVersion": 28 },
       "ROTN3": { "address": 74, "friendlyName": "Rotation 3", "min": 0, "max": 48, "factoryDefault": 17, "minVersion": 28 },
-      "ROTN4": { "address": 76, "friendlyName": "Rotation 4", "min": 0, "max": 48, "factoryDefault": 10, "minVersion": 28 },
-      "PRIO":  { "address": 78, "friendlyName": "Priority",   "min": 0, "max": 1,  "factoryDefault": 0,  "minVersion": 28 }
+      "ROTN4": { "address": 76, "friendlyName": "Rotation 4", "min": 0, "max": 48, "factoryDefault": 10, "minVersion": 28 }
     }
   },
   {
@@ -158,7 +162,7 @@
     "items": {
       "DAC_MODE": { "address": 100, "friendlyName": "DAC mode", "min": 0, "max": 1,   "factoryDefault": 1,   "minVersion": 32, "uiModel": "select:0;Breath:1;Pitch" },
       "CVTUNE":   { "address": 180, "friendlyName": "CV tune",  "min": 1, "max": 199, "factoryDefault": 100, "minVersion": 43, "uiModel": "slider", "dataModel": "offset:100" },
-      "CVSCALE":  { "address": 182, "friendlyName": "CV scale", "min": 1, "max": 199, "factoryDefault": 100, "minVersion": 43, "uiModel": "slider" },
+      "CVSCALE":  { "address": 182, "friendlyName": "CV scale", "min": 1, "max": 199, "factoryDefault": 100, "minVersion": 43, "uiModel": "slider", "dataModel": "offset:100" },
       "CVRATE":   { "address": 184, "friendlyName": "CV rate",  "min": 0, "max": 8,   "factoryDefault": 3,   "minVersion": 44 }
     }
   },
@@ -169,7 +173,8 @@
       "EXTRA_SRC":  { "address": 190, "friendlyName": "Extra source",      "min": 0, "max": 1,     "factoryDefault": 0,  "minVersion": 47, "uiModel": "select:0;Lip:1;Glide strip" },
       "DIPSW_BITS":{ "address": 66,  "friendlyName": "Flags", "min": 0, "max": 16383, "factoryDefault": 0,  "minVersion": 26, "uiModel": "bitfield:0;Fast boot:1;Legacy:2;Legacy breath active:3;WIDI:4;Gate open:5;Special key:6;BCAS mode" },
       "BATTYPE":   { "address": 112, "friendlyName": "Battery type",    "min": 0, "max": 3,     "factoryDefault": 0,  "minVersion": 35, "uiModel": "select:0;Alkaline:1;NiMH:2;Li-ion 1:3;Li-ion 2" },
-      "ROLLER":    { "address": 186, "friendlyName": "Roller mode",     "min": 0, "max": 3,     "factoryDefault": 1,  "minVersion": 45 }
+      "BRHARMSET":{ "address": 168, "friendlyName": "Breath harmonics set",              "min": 0, "max": 6,  "factoryDefault": 0, "minVersion": 41 },
+      "BRHARMSEL":{ "address": 170, "friendlyName": "Breath harmonics select",           "min": 0, "max": 3,  "factoryDefault": 0, "minVersion": 41 }
     }
   }
 ]
