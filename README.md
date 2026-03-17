@@ -2,7 +2,7 @@
 
 A browser-based configuration editor for the [Berglund Instruments](https://berglundinstruments.com/) [NuEVI](https://berglundinstruments.com/nuevi-trumpet-horn-tuba-fingering-instrument/) and [NuRAD](https://berglundinstruments.com/nurad-ewi-sax-etc-fingering-instrument/) wind controllers. Works with firmware version 1.4.4 and later.
 
-Use this live at [config.berglundinstruments.com](http://config.berglundinstruments.com)
+Use this live at [https://berglundinst.github.io/NuControl/](https://berglundinst.github.io/NuControl/)
 
 ## Usage
 
